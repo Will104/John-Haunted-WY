@@ -1,16 +1,26 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
     public float turnSpeed = 20f;
+    
+    public Image StaminaBar;
+    public float Stamina, MaxStamina;
+    public float RunCost;
+    public float ChargeRate;
+    public float MovementSpeed = 1f;
+
+    private Coroutine recharge;
 
     Animator m_Animator;
     Rigidbody m_Rigidbody;
     AudioSource m_AudioSource;
     Vector3 m_Movement;
     Quaternion m_Rotation = Quaternion.identity;
+
 
     void Start()
     {
@@ -46,11 +56,41 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 desiredForward = Vector3.RotateTowards(transform.forward, m_Movement, turnSpeed * Time.deltaTime, 0f);
         m_Rotation = Quaternion.LookRotation(desiredForward);
-    }
 
+    }
+    void Update() {
+        if(Input.GetKey("f") && Stamina > 0) { 
+            MovementSpeed = 1.5f;
+            Debug.Log("Run");
+            Stamina -= RunCost * Time.deltaTime;
+            if(Stamina < 0) Stamina = 0;
+            StaminaBar.fillAmount = Stamina / MaxStamina;
+            if(recharge != null) StopCoroutine(recharge);
+            recharge = StartCoroutine(RechargeStamina());
+        }
+
+        if(Input.GetKeyUp("f") || Stamina <= 0) {
+            MovementSpeed = 1;
+        }
+    }
+    
+    private IEnumerator RechargeStamina() {
+        yield return new WaitForSeconds(1f);
+
+        while(Stamina < MaxStamina) {
+            Stamina += ChargeRate / 10f;
+            if(Stamina > MaxStamina) Stamina = MaxStamina;
+            StaminaBar.fillAmount = Stamina / MaxStamina;
+            yield return new WaitForSeconds(.1f);
+            if(recharge != null) StopCoroutine(recharge);
+            recharge = StartCoroutine(RechargeStamina());
+        }
+    }
+    
     void OnAnimatorMove()
     {
-        m_Rigidbody.MovePosition(m_Rigidbody.position + m_Movement * m_Animator.deltaPosition.magnitude);
+        m_Rigidbody.MovePosition(m_Rigidbody.position + m_Movement * m_Animator.deltaPosition.magnitude * MovementSpeed);
         m_Rigidbody.MoveRotation(m_Rotation);
     }
+
 }
